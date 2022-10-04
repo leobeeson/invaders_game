@@ -1,4 +1,23 @@
-use std::error::Error;
+use std::{
+    error::Error, 
+    io,
+    time::Duration,
+};
+use crossterm::{
+    terminal::{
+        self, EnterAlternateScreen, LeaveAlternateScreen
+    }, 
+    cursor::{
+        Hide, 
+        Show
+    }, 
+    ExecutableCommand, 
+    event::{
+        KeyCode, 
+        Event,
+        self
+    }
+};
 use rusty_audio::Audio;
 
 
@@ -12,7 +31,32 @@ fn main() -> Result <(), Box<dyn Error>> {
     audio.add("win", "win.wav");
     audio.play("startup");
 
+    // Terminal
+    let mut stdout = io::stdout();
+    terminal::enable_raw_mode()?;
+    stdout.execute(EnterAlternateScreen)?;
+    stdout.execute(Hide)?;
+
+    // Game Loop
+    'gameloop: loop {
+        // Input
+        while event::poll(Duration::default())? {
+            if let Event::Key(key_event) = event::read()? {
+                match key_event.code {
+                    KeyCode::Esc | KeyCode::Char('q') => {
+                        audio.play("lose");
+                        break 'gameloop;
+                    },
+                    _ => {}
+                }
+            }
+        }
+    }
+
     // Cleanup
     audio.wait();
+    stdout.execute(Show)?;
+    stdout.execute(LeaveAlternateScreen)?;
+    terminal::disable_raw_mode()?;
     Ok(())
 }
